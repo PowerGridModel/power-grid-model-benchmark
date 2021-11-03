@@ -31,7 +31,6 @@ cable_param_pp = {
 u_rated = 10e3
 
 # source
-source_id = -1
 source_sk = 2000e6
 source_rx = 0.1
 source_01 = 1.0
@@ -83,20 +82,46 @@ def generate_fictional_grid(
     # pp
     pp.create_std_type(pp_net, cable_param_pp, name="630Al", element="line")
     for seq, (idx, l) in enumerate(zip(pgm_dataset['line']['id'], length)):
-        pp.create_line(pp_net, from_bus=from_node[seq], to_bus=to_node[seq], length_km=l, index=idx, std_type='630Al')
+        pp.create_line(pp_net, from_bus=from_node[seq], to_bus=to_node[seq], length_km=l,
+                       index=idx - n_node, std_type='630Al')
+
+    # add asym load
+    n_load = n_node - 1
+    # pgm
+    pgm_dataset['asym_load'] = pgm.initialize_array('input', 'asym_load', n_load)
+    pgm_dataset['asym_load']['id'] = np.arange(n_node + n_line, n_node + n_line + n_load, dtype=np.int32)
+    pgm_dataset['asym_load']['node'] = pgm_dataset['node']['id'][1:]
+    pgm_dataset['asym_load']['status'] = 1
+    pgm_dataset['asym_load']['type'] = pgm.LoadGenType.const_power
+    pgm_dataset['asym_load']['p_specified'] = np.random.uniform(
+        low=load_p_w_min / 3.0, high=load_p_w_max / 3.0, size=(n_load, 3))
+    pgm_dataset['asym_load']['q_specified'] = pgm_dataset['asym_load']['p_specified'] * np.sqrt(1 - pf ** 2) / pf
+    # pp
+    for asym_load in pgm_dataset['asym_load']:
+        pp.create_asymmetric_load(
+            pp_net, bus=asym_load['node'], index=asym_load['id'] - n_line - n_node, type='wye',
+            p_a_mw=asym_load['p_specified'][0] * 1e-6, q_a_mvar=asym_load['q_specified'][0] * 1e-6,
+            p_b_mw=asym_load['p_specified'][1] * 1e-6, q_b_mvar=asym_load['q_specified'][1] * 1e-6,
+            p_c_mw=asym_load['p_specified'][2] * 1e-6, q_c_mvar=asym_load['q_specified'][2] * 1e-6
+        )
+        pp.create_load(
+            pp_net, bus=asym_load['node'], index=asym_load['id'] - n_line - n_node, type='wye',
+            p_mw=np.sum(asym_load['p_specified']) * 1e-6, q_mvar=np.sum(asym_load['q_specified']) * 1e-6
+        )
 
     # source
     # pgm
+    source_id = n_node + n_line + n_load
     pgm_dataset['source'] = pgm.initialize_array('input', 'source', 1)
-    pgm_dataset['source']['id'] = -1
+    pgm_dataset['source']['id'] = source_id
     pgm_dataset['source']['node'] = 0
     pgm_dataset['source']['status'] = 1
-    pgm_dataset['source']['u_ref'] = 0
+    pgm_dataset['source']['u_ref'] = source_u_ref
     pgm_dataset['source']['sk'] = source_sk
     pgm_dataset['source']['rx_ratio'] = source_rx
     pgm_dataset['source']['z01_ratio'] = source_01
     # pp
-    pp.create_ext_grid(pp_net, bus=0, vm_pu=source_u_ref, va_degree=0.0, index=-1)
+    pp.create_ext_grid(pp_net, bus=0, vm_pu=source_u_ref, va_degree=0.0, index=0)
 
     return {
         'pgm_dataset': pgm_dataset,
