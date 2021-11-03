@@ -46,7 +46,7 @@ def generate_fictional_grid(
 
     n_node = n_feeder * n_node_per_feeder + 1
     pp_net = pp.create_empty_network(f_hz=50.0)
-    pgm_dataset = {}
+    pgm_dataset = dict()
 
     # node
     # pgm
