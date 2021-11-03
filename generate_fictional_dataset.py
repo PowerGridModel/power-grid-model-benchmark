@@ -31,7 +31,7 @@ cable_param_pp = {
 u_rated = 10e3
 
 # source
-source_sk = 2000e6
+source_sk = 1e20
 source_rx = 0.1
 source_01 = 1.0
 source_u_ref = 1.05
@@ -54,8 +54,10 @@ def generate_fictional_grid(
     pgm_dataset['node']['id'] = np.arange(n_node, dtype=np.int32)
     pgm_dataset['node']['u_rated'] = u_rated
     # pp
-    for i in pgm_dataset['node']['id']:
-        pp.create_bus(pp_net, vn_kv=u_rated * 1e-3, type='n', index=i)
+    pp.create_buses(
+        pp_net, nr_buses=n_node,
+        vn_kv=pgm_dataset['node']['u_rated'] * 1e-3,
+        index=pgm_dataset['node']['id'])
 
     # line
     n_line = n_node - 1
@@ -81,9 +83,24 @@ def generate_fictional_grid(
             pgm_dataset['line'][attr_name] = attr * length
     # pp
     pp.create_std_type(pp_net, cable_param_pp, name="630Al", element="line")
-    for seq, (idx, l) in enumerate(zip(pgm_dataset['line']['id'], length)):
-        pp.create_line(pp_net, from_bus=from_node[seq], to_bus=to_node[seq], length_km=l,
-                       index=idx - n_node, std_type='630Al')
+    line_df_dict = cable_param_pp.copy()
+    line_df_dict.update({
+        'name': None,
+        'std_type': '630Al',
+        'from_bus': pgm_dataset['line']['from_node'],
+        'to_bus': pgm_dataset['line']['to_node'],
+        'length_km': length,
+        'g_us_per_km': 0.0,
+        'g0_us_per_km': 0.0,
+        'df': 1.0,
+        'parallel': 1,
+        'type': np.nan,
+        'in_service': True
+    })
+    line_df = pd.DataFrame(
+        line_df_dict,
+        index=pgm_dataset['line']['id'] - n_node)
+    pp_net.line = line_df
 
     # add asym load
     n_load = n_node - 1
@@ -97,17 +114,32 @@ def generate_fictional_grid(
         low=load_p_w_min / 3.0, high=load_p_w_max / 3.0, size=(n_load, 3))
     pgm_dataset['asym_load']['q_specified'] = pgm_dataset['asym_load']['p_specified'] * np.sqrt(1 - pf ** 2) / pf
     # pp
-    for asym_load in pgm_dataset['asym_load']:
-        pp.create_asymmetric_load(
-            pp_net, bus=asym_load['node'], index=asym_load['id'] - n_line - n_node, type='wye',
-            p_a_mw=asym_load['p_specified'][0] * 1e-6, q_a_mvar=asym_load['q_specified'][0] * 1e-6,
-            p_b_mw=asym_load['p_specified'][1] * 1e-6, q_b_mvar=asym_load['q_specified'][1] * 1e-6,
-            p_c_mw=asym_load['p_specified'][2] * 1e-6, q_c_mvar=asym_load['q_specified'][2] * 1e-6
-        )
-        pp.create_load(
-            pp_net, bus=asym_load['node'], index=asym_load['id'] - n_line - n_node, type='wye',
-            p_mw=np.sum(asym_load['p_specified']) * 1e-6, q_mvar=np.sum(asym_load['q_specified']) * 1e-6
-        )
+    asym_load_df = pd.DataFrame(
+        {
+            'name': [None] * n_load,
+            'bus': pgm_dataset['asym_load']['node'],
+            'p_a_mw': pgm_dataset['asym_load']['p_specified'][:, 0] * 1e-6,
+            'p_b_mw': pgm_dataset['asym_load']['p_specified'][:, 1] * 1e-6,
+            'p_c_mw': pgm_dataset['asym_load']['p_specified'][:, 2] * 1e-6,
+            'q_a_mvar': pgm_dataset['asym_load']['q_specified'][:, 0] * 1e-6,
+            'q_b_mvar': pgm_dataset['asym_load']['q_specified'][:, 1] * 1e-6,
+            'q_c_mvar': pgm_dataset['asym_load']['q_specified'][:, 2] * 1e-6,
+            'sn_mva': np.full(shape=(n_load, ), fill_value=np.nan, dtype=np.float64),
+            'scaling': np.full(shape=(n_load, ), fill_value=1.0, dtype=np.float64),
+            'in_service': np.full(shape=(n_load, ), fill_value=True, dtype=np.bool),
+            'type': np.full(shape=(n_load, ), fill_value='wye', dtype=np.object)
+        },
+        index=pgm_dataset['asym_load']['id'] - n_line - n_node)
+    pp_net.asymmetric_load = asym_load_df
+
+    pp.create_loads(
+        pp_net,
+        buses=pgm_dataset['asym_load']['node'],
+        index=pgm_dataset['asym_load']['id'] - n_line - n_node,
+        type='wye',
+        p_mw=np.sum(pgm_dataset['asym_load']['p_specified'], axis=1) * 1e-6,
+        q_mvar=np.sum(pgm_dataset['asym_load']['q_specified'], axis=1) * 1e-6
+    )
 
     # source
     # pgm
@@ -121,7 +153,13 @@ def generate_fictional_grid(
     pgm_dataset['source']['rx_ratio'] = source_rx
     pgm_dataset['source']['z01_ratio'] = source_01
     # pp
-    pp.create_ext_grid(pp_net, bus=0, vm_pu=source_u_ref, va_degree=0.0, index=0)
+    pp.create_ext_grid(
+        pp_net, bus=0, vm_pu=source_u_ref, va_degree=0.0, index=0,
+        s_sc_max_mva=source_sk * 1e-6,
+        rx_max=source_rx,
+        r0x0_max=source_rx,
+        x0x_max=source_01
+    )
 
     return {
         'pgm_dataset': pgm_dataset,
