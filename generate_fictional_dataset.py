@@ -30,6 +30,13 @@ cable_param_pp = {
 # standard u rated
 u_rated = 10e3
 
+# source
+source_id = -1
+source_sk = 2000e6
+source_rx = 0.1
+source_01 = 1.0
+source_u_ref = 1.05
+
 
 def generate_fictional_grid(
         n_feeder: int, n_node_per_feeder: int,
@@ -77,7 +84,20 @@ def generate_fictional_grid(
     pp.create_std_type(pp_net, cable_param_pp, name="630Al", element="line")
     for seq, (idx, l) in enumerate(zip(pgm_dataset['line']['id'], length)):
         pp.create_line(pp_net, from_bus=from_node[seq], to_bus=to_node[seq], length_km=l, index=idx, std_type='630Al')
-    
+
+    # source
+    # pgm
+    pgm_dataset['source'] = pgm.initialize_array('input', 'source', 1)
+    pgm_dataset['source']['id'] = -1
+    pgm_dataset['source']['node'] = 0
+    pgm_dataset['source']['status'] = 1
+    pgm_dataset['source']['u_ref'] = 0
+    pgm_dataset['source']['sk'] = source_sk
+    pgm_dataset['source']['rx_ratio'] = source_rx
+    pgm_dataset['source']['z01_ratio'] = source_01
+    # pp
+    pp.create_ext_grid(pp_net, bus=0, vm_pu=source_u_ref, va_degree=0.0, index=-1)
+
     return {
         'pgm_dataset': pgm_dataset,
         'pp_net': pp_net
