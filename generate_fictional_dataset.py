@@ -133,15 +133,6 @@ def generate_fictional_grid(
         index=pgm_dataset['asym_load']['id'] - n_line - n_node)
     pp_net.asymmetric_load = asym_load_df
 
-    pp.create_loads(
-        pp_net,
-        buses=pgm_dataset['asym_load']['node'],
-        index=pgm_dataset['asym_load']['id'] - n_line - n_node,
-        type='wye',
-        p_mw=np.sum(pgm_dataset['asym_load']['p_specified'], axis=1) * 1e-6,
-        q_mvar=np.sum(pgm_dataset['asym_load']['q_specified'], axis=1) * 1e-6
-    )
-
     # source
     # pgm
     source_id = n_node + n_line + n_load
@@ -186,17 +177,9 @@ def generate_time_series(
     asym_load_profile['id'] = pgm_dataset['asym_load']['id'].reshape(1, -1)
     asym_load_profile['p_specified'] = pgm_dataset['asym_load']['p_specified'].reshape(1, -1, 3) * scaling
     asym_load_profile['q_specified'] = pgm_dataset['asym_load']['q_specified'].reshape(1, -1, 3) * scaling
-    total_p = np.sum(asym_load_profile['p_specified'], axis=-1)
-    total_q = np.sum(asym_load_profile['q_specified'], axis=-1)
 
     # pp
-    df_p = pd.DataFrame(total_p * 1e-6, index=np.arange(n_step), columns=pp_net.load.index)
-    df_q = pd.DataFrame(total_q * 1e-6, index=np.arange(n_step), columns=pp_net.load.index)
-    pp_dataset = {
-        'p_mw': DFData(df_p),
-        'q_mvar': DFData(df_q)
-    }
-    # asymmetric
+    pp_dataset = {}
     for x, y in zip(['p', 'q'], ['mw', 'mvar']):
         for i, p in enumerate(['a', 'b', 'c']):
             name = f'{x}_{p}_{y}'
@@ -204,7 +187,7 @@ def generate_time_series(
                 pd.DataFrame(
                     asym_load_profile[f'{x}_specified'][..., i] * 1e-6,
                     index=np.arange(n_step),
-                    columns=pp_net.load.index)
+                    columns=pp_net.asymmetric_load.index)
             )
 
     return {
