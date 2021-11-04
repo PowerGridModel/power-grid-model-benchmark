@@ -192,13 +192,22 @@ def generate_time_series(
     # pp
     df_p = pd.DataFrame(total_p * 1e-6, index=np.arange(n_step), columns=pp_net.load.index)
     df_q = pd.DataFrame(total_q * 1e-6, index=np.arange(n_step), columns=pp_net.load.index)
-    ds_p = DFData(df_p)
-    ds_q = DFData(df_q)
+    pp_dataset = {
+        'p_mw': DFData(df_p),
+        'q_mvar': DFData(df_q)
+    }
+    # asymmetric
+    for x, y in zip(['p', 'q'], ['mw', 'mvar']):
+        for i, p in enumerate(['a', 'b', 'c']):
+            name = f'{x}_{p}_{y}'
+            pp_dataset[name] = DFData(
+                pd.DataFrame(
+                    asym_load_profile[f'{x}_specified'][..., i] * 1e-6,
+                    index=np.arange(n_step),
+                    columns=pp_net.load.index)
+            )
 
     return {
         'pgm_update_dataset': {'asym_load': asym_load_profile},
-        'pp_dataset': {
-            'ds_p': ds_p,
-            'ds_q': ds_q
-        }
+        'pp_dataset': pp_dataset
     }
