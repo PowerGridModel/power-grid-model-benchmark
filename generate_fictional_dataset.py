@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import pandapower as pp
 import power_grid_model as pgm
+from pandapower.timeseries.data_sources.frame_data import DFData
 
 
 # cable parameter per km
@@ -176,6 +177,8 @@ def generate_time_series(
 ):
     np.random.seed(seed)
     pp_net = fictional_dataset['pp_net']
+
+    # pgm
     pgm_dataset = fictional_dataset['pgm_dataset']
     n_load = pgm_dataset['asym_load'].size
     scaling = np.random.uniform(low=load_scaling_min, high=load_scaling_max, size=(n_step, n_load, 3))
@@ -183,7 +186,19 @@ def generate_time_series(
     asym_load_profile['id'] = pgm_dataset['asym_load']['id'].reshape(1, -1)
     asym_load_profile['p_specified'] = pgm_dataset['asym_load']['p_specified'].reshape(1, -1, 3) * scaling
     asym_load_profile['q_specified'] = pgm_dataset['asym_load']['q_specified'].reshape(1, -1, 3) * scaling
+    total_p = np.sum(asym_load_profile['p_specified'], axis=-1)
+    total_q = np.sum(asym_load_profile['q_specified'], axis=-1)
+
+    # pp
+    df_p = pd.DataFrame(total_p * 1e-6, index=np.arange(n_step), columns=pp_net.load.index)
+    df_q = pd.DataFrame(total_q * 1e-6, index=np.arange(n_step), columns=pp_net.load.index)
+    ds_p = DFData(df_p)
+    ds_q = DFData(df_q)
 
     return {
-        'pgm_update_dataset': {'asym_load': asym_load_profile}
+        'pgm_update_dataset': {'asym_load': asym_load_profile},
+        'pp_dataset': {
+            'ds_p': ds_p,
+            'ds_q': ds_q
+        }
     }
