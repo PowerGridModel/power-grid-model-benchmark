@@ -4,6 +4,15 @@ import pandapower as pp
 import power_grid_model as pgm
 from pandapower.timeseries.data_sources.frame_data import DFData
 
+# standard u rated
+u_rated = 10e3
+frequency = 50.0
+
+# source
+source_sk = 1e20
+source_rx = 0.1
+source_01 = 1.0
+source_u_ref = 1.05
 
 # cable parameter per km
 # 630Al XLPE 10 kV with neutral conductor
@@ -14,28 +23,23 @@ cable_param = {
     'r0': 0.156,
     'x0': 0.1,
     'c0': 0.66e-6,
-    'tan1': 0.0,
-    'tan0': 0.0,
+    'tan1': 0.005,
+    'tan0': 0.01,
     'i_n': 1e3
 }
 cable_param_pp = {
     "c_nf_per_km": cable_param['c1'] * 1e9,
     "r_ohm_per_km": cable_param['r1'],
     "x_ohm_per_km": cable_param['x1'],
+    "g_us_per_km": cable_param['tan1'] * cable_param['c1'] * 2 * np.pi * frequency * 1e6,
     "c0_nf_per_km": cable_param['c0'] * 1e9,
     "r0_ohm_per_km": cable_param['r0'],
     "x0_ohm_per_km": cable_param['x0'],
-    "max_i_ka": cable_param['i_n'] * 1e-3
+    "g0_us_per_km": cable_param['tan0'] * cable_param['c0'] * 2 * np.pi * frequency * 1e6,
+    "max_i_ka": cable_param['i_n'] * 1e-3,
 }
 
-# standard u rated
-u_rated = 10e3
 
-# source
-source_sk = 1e20
-source_rx = 0.1
-source_01 = 1.0
-source_u_ref = 1.05
 
 
 def generate_fictional_grid(
@@ -46,7 +50,7 @@ def generate_fictional_grid(
     np.random.seed(seed)
 
     n_node = n_feeder * n_node_per_feeder + 1
-    pp_net = pp.create_empty_network(f_hz=50.0)
+    pp_net = pp.create_empty_network(f_hz=frequency)
     pgm_dataset = dict()
 
     # node
