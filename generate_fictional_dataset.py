@@ -84,24 +84,10 @@ def generate_fictional_grid(
             pgm_dataset['line'][attr_name] = attr * length
     # pp
     pp.create_std_type(pp_net, cable_param_pp, name="630Al", element="line")
-    line_df_dict = cable_param_pp.copy()
-    line_df_dict.update({
-        'name': None,
-        'std_type': '630Al',
-        'from_bus': pgm_dataset['line']['from_node'],
-        'to_bus': pgm_dataset['line']['to_node'],
-        'length_km': length,
-        'g_us_per_km': 0.0,
-        'g0_us_per_km': 0.0,
-        'df': 1.0,
-        'parallel': 1,
-        'type': np.nan,
-        'in_service': True
-    })
-    line_df = pd.DataFrame(
-        line_df_dict,
-        index=pgm_dataset['line']['id'] - n_node)
-    pp_net.line = line_df
+    pp.create_lines_from_parameters(
+        pp_net, from_buses=from_node, to_buses=to_node,
+        length_km=length, index=pgm_dataset['line']['id'] - n_node,
+        **cable_param_pp)
 
     # add asym load
     n_load = n_node - 1
