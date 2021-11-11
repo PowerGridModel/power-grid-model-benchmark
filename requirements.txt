@@ -1,0 +1,7 @@
+jupyter
+mkl
+numba
+numpy
+pandapower
+# power-grid-model # --extra-index-url=https://nexus.apps.ocp-01.prd.ahcaws.com/repository/pypi-hosted/simple
+
