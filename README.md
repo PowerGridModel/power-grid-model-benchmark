@@ -1,5 +1,10 @@
-# Power Gird Model Build Env
-`power-grid-model-build-env` is the Linux build environment for [power-grid-model](https://github.com/alliander-opensource/power-grid-model).
+<!--
+SPDX-FileCopyrightText: 2022 Contributors to the Power Grid Model project <dynamic.grid.calculation@alliander.com>
+
+SPDX-License-Identifier: MPL-2.0
+-->
+# Power Gird Model Benchmark
+`power-grid-model-benchmark` is a benchmark example of [power-grid-model](https://github.com/alliander-opensource/power-grid-model).
 
 # License
 This project is licensed under the Mozilla Public License, version 2.0 - see [LICENSE](LICENSE) for details.
