@@ -13,7 +13,7 @@ There are a few ways to connect with the `power-grid-model` project:
 
 ## How to ask for help, suggest a feature, or give recommendations.
 
-If you have trouble installing, building, or using Power Grid Model, 
+If you have trouble installing, building, or using Power Grid Model Benchmark, 
 but there's not yet reason to suspect you've encountered a genuine bug,
 you can ask a question in the Discussions tab of the repository.
 
@@ -24,17 +24,6 @@ you can also propose it in the Discussions tab.
 
 This project manages bug and enhancement using the GitHub issue tracker. 
 The various issue templates will guide you on making an effective report.
-
-### Input data validity check
-
-In many cases the problem is in the input data. 
-We have an extensive input data validity check to help you with this.
-Pleas refer to this [notebook](examples/Validation%20Examples.ipynb).
-
-### Dump input/output data
-
-To effectively report an issue we need a data dump of input and output.
-Please refer to this [notebook](examples/Make%20Test%20Dataset.ipynb) on how to do it.
 
 ## How to report a security vulnerability
 
