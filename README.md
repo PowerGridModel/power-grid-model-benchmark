@@ -7,8 +7,6 @@ SPDX-License-Identifier: MPL-2.0
 `power-grid-model-benchmark` is a benchmark example of [power-grid-model](https://github.com/alliander-opensource/power-grid-model) in a jupyter notebook on your local machine.
 
 ## Instructions
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/alliander-opensource/power-grid-model-benchmark/main)
-You can use Binder to explore the notebooks in an online, interactive environment.
 
 ### Locally
 Install:
