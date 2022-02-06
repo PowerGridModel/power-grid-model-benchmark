@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: MPL-2.0
 
 jupyter
-mkl
 numba
-numpy
-pandapower
+numpy<1.22,>=1.18
+git+https://github.com/e2nIEE/pandapower.git@develop
 power-grid-model
-
+lightsim2grid
+igraph
