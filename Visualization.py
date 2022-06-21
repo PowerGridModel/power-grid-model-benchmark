@@ -39,7 +39,6 @@ def get_versus_withoutpanda(node, time_1, time_2, title):
     df2 = pd.DataFrame({'node': np.array(node),
                         'time': time_2})
 
-
     # plot both time series
     plt.plot(df1.node, df1.time, color='red', label='Powergridmodel Newton-Raphson', linewidth=3)
     plt.plot(df2.node, df2.time, color='green', label='Powergridmodel Linear Method',
@@ -56,11 +55,3 @@ def get_versus_withoutpanda(node, time_1, time_2, title):
     # display plot
     plt.show()
 
-    '''fig, axs = plt.subplots(nrows=1, ncols=2)
-    axs[0] = (Visualization.get_versus_chart(n_feeder_node_list, PandaPower_NR_Symmetric_calculation_with_solver_initialization,
-                            PGM_NR_Symmetric_calculation_with_solver_initialization,
-                            'Single calculation using Newton-Raphson Method with solver initialization'))
-    axs[1] = (Visualization.get_versus_chart(n_feeder_node_list, PandaPower_NR_Symmetric_calculation_with_solver_initialization,
-                            PGM_NR_Symmetric_calculation_with_solver_initialization,
-                            'Single calculation using Newton-Raphson Method with solver initialization'))
-    plt.show()'''
