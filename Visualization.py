@@ -15,6 +15,8 @@ def get_versus_withpanda(node, time_1, time_2, time_3, title):
                         'time': time_3})
 
     # plot both time series
+    #plt.ylim(bottom=0.0001)
+    plt.yscale("log")
     plt.plot(df1.node, df1.time, color='blue', label='Pandapower Newton-Raphson', linewidth=3)
     plt.plot(df2.node, df2.time, color='red', label='Powergridmodel Newton-Raphson', linewidth=3)
     plt.plot(df3.node, df3.time, color='green', label='Powergridmodel Linear Method',
@@ -22,8 +24,8 @@ def get_versus_withpanda(node, time_1, time_2, time_3, title):
 
     # add title and axis labels
     plt.title(title)
-    plt.xlabel('no.of nodes')
-    plt.ylabel('Calculation_time')
+    plt.xlabel('no.of end nodes on the grid')
+    plt.ylabel('Calculation time in seconds')
 
     # add legend
     plt.legend()
