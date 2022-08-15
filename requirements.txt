@@ -6,6 +6,6 @@ jupyter
 numba
 numpy
 pandapower
-power-grid-model
+power-grid-model>=1.4
 lightsim2grid
 igraph
