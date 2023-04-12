@@ -9,6 +9,21 @@ Set DefaultBaseFrequency={{ frequency }}
 
 New	LineCode.630Al nphases=3 r1=0.063 x1=0.103 r0=0.156 x0=0.1 c1=400.0 c0=660.0 Normamps=1000.0 Units=km
 
-{% for line_name, line_dict in Line.items() %}
-New Line.{{ line_name }} {% for k, v in line_dict.items() %} {{ k }}={{ v }} {% endfor -%}
+! Lines
+{%- for name, dict in Line.items() %}
+New Line.{{ name }} {% for k, v in dict.items() %} {{ k }}={{ v }} {% endfor -%}
 {% endfor -%}
+
+!
+
+! Loads
+{%- for name, dict in Load.items() %}
+New Load.{{ name }} {% for k, v in dict.items() %} {{ k }}={{ v }} {% endfor -%}
+{% endfor -%}
+
+
+!
+
+! Initial Configurations
+Set VoltageBases = [{{ basekv }}]
+CalcVoltageBases

@@ -67,7 +67,7 @@ def generate_fictional_grid(
 ):
     dss_dict = {
         "frequency": frequency,
-        "u_rated": u_rated
+        "basekv": u_rated * 1e-3
     }
 
     DATA_DIR.mkdir(exist_ok=True)
@@ -164,6 +164,23 @@ def generate_fictional_grid(
         index=pgm_dataset["asym_load"]["id"] - n_line - n_node,
     )
     pp_net.asymmetric_load = asym_load_df
+    # dss
+    dss_dict["Load"] = {
+        f"{load['id']}_{phase + 1}": {
+            "Bus1": f"{load['node']}.{phase + 1}",
+            "Phases": 1,
+            "Conn": "wye",
+            "Model": 1,
+            "Kv": u_rated / np.sqrt(3) * 1e-3,
+            "Kw": load["p_specified"][phase] * 1e-3,
+            "kvar": load["q_specified"][phase] * 1e-3,
+            "Vmaxpu": 2.0,
+            "Vminpu": 0.1
+        }
+
+        for load in pgm_dataset["asym_load"]
+        for phase in range(3)
+    }
 
     # source
     # pgm
