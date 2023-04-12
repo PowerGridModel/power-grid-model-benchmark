@@ -6,7 +6,12 @@
 Clear
 Set DefaultBaseFrequency={{ frequency }}
 
+! source
+New object=circuit.{{ source_name }} {% for k, v in source_dict.items() %} {{ k }}={{ v }} {% endfor -%}
 
+!
+
+! cable type
 New	LineCode.630Al nphases=3 r1=0.063 x1=0.103 r0=0.156 x0=0.1 c1=400.0 c0=660.0 Normamps=1000.0 Units=km
 
 ! Lines

@@ -205,6 +205,18 @@ def generate_fictional_grid(
         r0x0_max=source_rx,
         x0x_max=source_01,
     )
+    # dss
+    source = pgm_dataset["source"][0]
+    dss_dict["source_name"] = source["id"]
+    dss_dict["source_dict"] = {
+        "Bus1": source["node"],
+        "basekv": u_rated * 1e-3,
+        "pu": source_u_ref,
+        "MVAc3": source_sk * 1e-6,
+        "MVAc1": source_sk * 1e-6 * 3.0 / (2.0 + source_01),
+        "x1r1": 1.0 / source_rx,
+        "x0r0": 1.0 / source_rx,
+    }
 
     # generate time series
     np.random.seed(seed)
@@ -235,8 +247,9 @@ def generate_fictional_grid(
     template_path_str = str(TEMPLATE_PATH.relative_to(FILE_DIR)).replace("\\", "/")
     template = JINJA_ENV.get_template(template_path_str)
     output = template.render(dss_dict)
+    output_path = DATA_DIR / "fictional_grid.dss"
 
-    with (DATA_DIR / "fictional_grid.dss").open(mode="w", encoding="utf-8") as output_file:
+    with (output_path).open(mode="w", encoding="utf-8") as output_file:
         output_file.write(output)
 
     # return values
@@ -245,4 +258,5 @@ def generate_fictional_grid(
         "pp_net": pp_net,
         "pgm_update_dataset": {"asym_load": asym_load_profile},
         "pp_time_series_dataset": pp_dataset,
+        "dss_file": output_path
     }
