@@ -49,6 +49,9 @@ def generate_fictional_grid(
         n_feeder: int, n_node_per_feeder: int,
         cable_length_km_min: float, cable_length_km_max: float,
         load_p_w_max: float, load_p_w_min: float, pf: float,
+        n_step: int,
+        load_scaling_min: float,
+        load_scaling_max: float,
         seed=0):
     np.random.seed(seed)
 
@@ -146,24 +149,10 @@ def generate_fictional_grid(
         x0x_max=source_01
     )
 
-    return {
-        'pgm_dataset': pgm_dataset,
-        'pp_net': pp_net
-    }
-
-
-def generate_time_series(
-        fictional_dataset: dict,
-        n_step: int,
-        load_scaling_min: float,
-        load_scaling_max: float,
-        seed=0
-):
+    # generate time series
     np.random.seed(seed)
-    pp_net = fictional_dataset['pp_net']
 
     # pgm
-    pgm_dataset = fictional_dataset['pgm_dataset']
     n_load = pgm_dataset['asym_load'].size
     scaling = np.random.uniform(low=load_scaling_min, high=load_scaling_max, size=(n_step, n_load, 3))
     asym_load_profile = pgm.initialize_array('update', 'asym_load', (n_step, n_load))
@@ -184,6 +173,8 @@ def generate_time_series(
             )
 
     return {
+        'pgm_dataset': pgm_dataset,
+        'pp_net': pp_net,
         'pgm_update_dataset': {'asym_load': asym_load_profile},
-        'pp_dataset': pp_dataset
+        'pp_time_series_dataset': pp_dataset
     }
