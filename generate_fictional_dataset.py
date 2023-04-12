@@ -212,8 +212,8 @@ def generate_fictional_grid(
         "Bus1": source["node"],
         "basekv": u_rated * 1e-3,
         "pu": source_u_ref,
-        "MVAc3": source_sk * 1e-6,
-        "MVAc1": source_sk * 1e-6 * 3.0 / (2.0 + source_01),
+        "MVAsc3": source_sk * 1e-6,
+        "MVAsc1": source_sk * 1e-6 * 3.0 / (2.0 + source_01),
         "x1r1": 1.0 / source_rx,
         "x0r0": 1.0 / source_rx,
     }
