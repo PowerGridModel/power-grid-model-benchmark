@@ -6,6 +6,14 @@ import pandas as pd
 import pandapower as pp
 import power_grid_model as pgm
 from pandapower.timeseries.data_sources.frame_data import DFData
+from jinja2 import Environment, FileSystemLoader
+from pathlib import Path
+
+FILE_DIR = Path(__file__).parent
+DATA_DIR = FILE_DIR / "data"
+TEMPLATE_PATH = FILE_DIR / "dss_template.dss"
+
+JINJA_ENV = Environment(loader=FileSystemLoader(FILE_DIR))
 
 # standard u rated
 u_rated = 10e3
@@ -19,6 +27,7 @@ source_u_ref = 1.05
 
 # cable parameter per km
 # 630Al XLPE 10 kV with neutral conductor
+cable_type = "630Al"
 cable_param = {
     "r1": 0.063,
     "x1": 0.103,
@@ -26,8 +35,8 @@ cable_param = {
     "r0": 0.156,
     "x0": 0.1,
     "c0": 0.66e-6,
-    "tan1": 0.005,
-    "tan0": 0.01,
+    "tan1": 0.0,
+    "tan0": 0.0,
     "i_n": 1e3,
 }
 cable_param_pp = {
@@ -56,6 +65,13 @@ def generate_fictional_grid(
     load_scaling_max: float,
     seed=0,
 ):
+    dss_dict = {
+        "frequency": frequency,
+        "u_rated": u_rated
+    }
+
+    DATA_DIR.mkdir(exist_ok=True)
+
     np.random.seed(seed)
 
     n_node = n_feeder * n_node_per_feeder + 1
@@ -104,6 +120,18 @@ def generate_fictional_grid(
         index=pgm_dataset["line"]["id"] - n_node,
         **cable_param_pp,
     )
+    # dss
+    dss_dict["Line"] = {
+        line["id"]: {
+            "Phases": 3,
+            "Bus1": line["from_node"],
+            "Bus2": line["to_node"],
+            "LineCode": cable_type,
+            "Length": line_length,
+            "Units": "km"
+        }
+        for line, line_length in zip(pgm_dataset["line"], length)
+    }
 
     # add asym load
     n_load = n_node - 1
@@ -185,6 +213,16 @@ def generate_fictional_grid(
                 )
             )
 
+    # generate dss
+    # jinja expects a string, representing a relative path with forward slashes
+    template_path_str = str(TEMPLATE_PATH.relative_to(FILE_DIR)).replace("\\", "/")
+    template = JINJA_ENV.get_template(template_path_str)
+    output = template.render(dss_dict)
+
+    with (DATA_DIR / "fictional_grid.dss").open(mode="w", encoding="utf-8") as output_file:
+        output_file.write(output)
+
+    # return values
     return {
         "pgm_dataset": pgm_dataset,
         "pp_net": pp_net,
