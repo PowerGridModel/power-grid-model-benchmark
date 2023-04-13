@@ -175,9 +175,9 @@ def generate_fictional_grid(
             "Kw": load["p_specified"][phase] * 1e-3,
             "kvar": load["q_specified"][phase] * 1e-3,
             "Vmaxpu": 2.0,
-            "Vminpu": 0.1
+            "Vminpu": 0.1,
+            "Daily": f"LoadShape_{load['id']}_{phase + 1}"
         }
-
         for load in pgm_dataset["asym_load"]
         for phase in range(3)
     }
@@ -241,6 +241,17 @@ def generate_fictional_grid(
                     columns=pp_net.asymmetric_load.index,
                 )
             )
+
+    # dss
+    dss_dict["LoadShape"] = {
+        f"LoadShape_{load['id']}_{phase + 1}": {
+            "Npts": n_step,
+            "Interval": 1.0,
+            "Mult": "(" + " ".join(map(str, scale[:, phase])) + ")"
+        }
+        for load, scale in zip(pgm_dataset["asym_load"], np.transpose(scaling, (1, 0, 2)))
+        for phase in range(3)
+    }
 
     # generate dss
     # jinja expects a string, representing a relative path with forward slashes

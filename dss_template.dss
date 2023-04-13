@@ -21,6 +21,13 @@ New Line.{{ name }} {% for k, v in dict.items() %} {{ k }}={{ v }} {% endfor -%}
 
 !
 
+! LoadShapes
+{%- for name, dict in LoadShape.items() %}
+New LoadShape.{{ name }} {% for k, v in dict.items() %} {{ k }}={{ v }} {% endfor -%}
+{% endfor -%}
+
+!
+
 ! Loads
 {%- for name, dict in Load.items() %}
 New Load.{{ name }} {% for k, v in dict.items() %} {{ k }}={{ v }} {% endfor -%}
