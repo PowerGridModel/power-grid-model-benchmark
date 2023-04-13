@@ -33,6 +33,12 @@ New LoadShape.{{ name }} {% for k, v in dict.items() %} {{ k }}={{ v }} {% endfo
 New Load.{{ name }} {% for k, v in dict.items() %} {{ k }}={{ v }} {% endfor -%}
 {% endfor -%}
 
+!
+
+! Monitors
+{%- for name, dict in Monitor.items() %}
+New Monitor.{{ name }} {% for k, v in dict.items() %} {{ k }}={{ v }} {% endfor -%}
+{% endfor -%}
 
 !
 

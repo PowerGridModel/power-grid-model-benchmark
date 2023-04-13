@@ -24,6 +24,10 @@ source_sk = 1e20
 source_rx = 0.1
 source_01 = 1.0
 source_u_ref = 1.05
+source_node = 0
+
+# opendss monitor
+opendss_monitor_mode = 32  # 0 for voltage, +32 for magnitude only
 
 # cable parameter per km
 # 630Al XLPE 10 kV with neutral conductor
@@ -65,10 +69,7 @@ def generate_fictional_grid(
     load_scaling_max: float,
     seed=0,
 ):
-    dss_dict = {
-        "frequency": frequency,
-        "basekv": u_rated * 1e-3
-    }
+    dss_dict = {"frequency": frequency, "basekv": u_rated * 1e-3}
 
     DATA_DIR.mkdir(exist_ok=True)
 
@@ -128,7 +129,7 @@ def generate_fictional_grid(
             "Bus2": line["to_node"],
             "LineCode": cable_type,
             "Length": line_length,
-            "Units": "km"
+            "Units": "km",
         }
         for line, line_length in zip(pgm_dataset["line"], length)
     }
@@ -176,7 +177,7 @@ def generate_fictional_grid(
             "kvar": load["q_specified"][phase] * 1e-3,
             "Vmaxpu": 2.0,
             "Vminpu": 0.1,
-            "Daily": f"LoadShape_{load['id']}_{phase + 1}"
+            "Daily": f"LoadShape_{load['id']}_{phase + 1}",
         }
         for load in pgm_dataset["asym_load"]
         for phase in range(3)
@@ -187,7 +188,7 @@ def generate_fictional_grid(
     source_id = n_node + n_line + n_load
     pgm_dataset["source"] = pgm.initialize_array("input", "source", 1)
     pgm_dataset["source"]["id"] = source_id
-    pgm_dataset["source"]["node"] = 0
+    pgm_dataset["source"]["node"] = source_node
     pgm_dataset["source"]["status"] = 1
     pgm_dataset["source"]["u_ref"] = source_u_ref
     pgm_dataset["source"]["sk"] = source_sk
@@ -206,10 +207,9 @@ def generate_fictional_grid(
         x0x_max=source_01,
     )
     # dss
-    source = pgm_dataset["source"][0]
-    dss_dict["source_name"] = source["id"]
+    dss_dict["source_name"] = source_id
     dss_dict["source_dict"] = {
-        "Bus1": source["node"],
+        "Bus1": source_node,
         "basekv": u_rated * 1e-3,
         "pu": source_u_ref,
         "MVAsc3": source_sk * 1e-6,
@@ -247,11 +247,22 @@ def generate_fictional_grid(
         f"LoadShape_{load['id']}_{phase + 1}": {
             "Npts": n_step,
             "Interval": 1.0,
-            "Mult": "(" + " ".join(map(str, scale[:, phase])) + ")"
+            "Mult": "(" + " ".join(map(str, scale[:, phase])) + ")",
         }
         for load, scale in zip(pgm_dataset["asym_load"], np.transpose(scaling, (1, 0, 2)))
         for phase in range(3)
     }
+    # monitor
+    dss_dict["Monitor"] = {
+        f"VSensor_{source_node}": {"Element": "Vsource.Source", "Terminal": 1, "Mode": opendss_monitor_mode}
+    }
+    for load in pgm_dataset["asym_load"]:
+        for phase in range(3):
+            dss_dict["Monitor"][f"VSensor_{load['node']}_{phase + 1}"] = {
+                "Element": f"Load.{load['id']}_{phase + 1}",
+                "Terminal": 1,
+                "Mode": opendss_monitor_mode,
+            }
 
     # generate dss
     # jinja expects a string, representing a relative path with forward slashes
@@ -269,5 +280,5 @@ def generate_fictional_grid(
         "pp_net": pp_net,
         "pgm_update_dataset": {"asym_load": asym_load_profile},
         "pp_time_series_dataset": pp_dataset,
-        "dss_file": output_path
+        "dss_file": output_path,
     }
