@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 jupyter
-numba
+numba~=0.56.0
 numpy
 pandapower
 power-grid-model>=1.4

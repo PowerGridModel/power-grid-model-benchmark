@@ -159,8 +159,8 @@ def generate_fictional_grid(
             "q_c_mvar": pgm_dataset["asym_load"]["q_specified"][:, 2] * 1e-6,
             "sn_mva": np.full(shape=(n_load,), fill_value=np.nan, dtype=np.float64),
             "scaling": np.full(shape=(n_load,), fill_value=1.0, dtype=np.float64),
-            "in_service": np.full(shape=(n_load,), fill_value=True, dtype=np.bool),
-            "type": np.full(shape=(n_load,), fill_value="wye", dtype=np.object),
+            "in_service": np.full(shape=(n_load,), fill_value=True, dtype=np.bool_),
+            "type": np.full(shape=(n_load,), fill_value="wye", dtype=np.object_),
         },
         index=pgm_dataset["asym_load"]["id"] - n_line - n_node,
     )
