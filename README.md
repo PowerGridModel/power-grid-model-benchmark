@@ -1,8 +1,9 @@
 <!--
-SPDX-FileCopyrightText: 2022 Contributors to the Power Grid Model project <dynamic.grid.calculation@alliander.com>
+SPDX-FileCopyrightText: Contributors to the Power Grid Model project <powergridmodel@lfenergy.org>
 
 SPDX-License-Identifier: MPL-2.0
 -->
+
 # Power Gird Model Benchmark
 
 `power-grid-model-benchmark` is a benchmark example of [power-grid-model](https://github.com/PowerGridModel/power-grid-model) in a jupyter notebook on your local machine.
