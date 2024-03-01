@@ -12,3 +12,4 @@ igraph
 pandas
 dss-python
 jinja2
+grid2op
