@@ -135,8 +135,18 @@ def generate_fictional_grid(
         for line, line_length in zip(pgm_dataset["line"], length)
     }
 
-    # add asym load
     n_load = n_node - 1
+    # add sym load
+    pgm_dataset["sym_load"] = pgm.initialize_array("input", "sym_load", n_load)
+    pgm_dataset["sym_load"]["id"] = np.arange(n_node + n_line, n_node + n_line + n_load, dtype=np.int32)
+    pgm_dataset["sym_load"]["node"] = pgm_dataset["node"]["id"][1:]
+    pgm_dataset["sym_load"]["status"] = 1
+    pgm_dataset["sym_load"]["type"] = pgm.LoadGenType.const_power
+    pgm_dataset["sym_load"]["p_specified"] = np.random.uniform(
+        low=load_p_w_min / 3.0, high=load_p_w_max / 3.0, size=n_load
+    )
+    pgm_dataset["sym_load"]["q_specified"] = pgm_dataset["sym_load"]["p_specified"] * np.sqrt(1 - pf**2) / pf
+    # add asym load
     # pgm
     pgm_dataset["asym_load"] = pgm.initialize_array("input", "asym_load", n_load)
     pgm_dataset["asym_load"]["id"] = np.arange(n_node + n_line, n_node + n_line + n_load, dtype=np.int32)
@@ -282,4 +292,121 @@ def generate_fictional_grid(
         "pgm_update_dataset": {"asym_load": asym_load_profile},
         "pp_time_series_dataset": pp_dataset,
         "dss_file": output_path,
+    }
+
+
+def generate_fictional_grid_pgm_tpf(
+    n_feeder: int,
+    n_node_per_feeder: int,
+    cable_length_km_min: float,
+    cable_length_km_max: float,
+    load_p_w_max: float,
+    load_p_w_min: float,
+    pf: float,
+    n_step: int,
+    load_scaling_min: float,
+    load_scaling_max: float,
+    seed=0,
+):
+    rng = np.random.default_rng(seed)
+
+    n_node = n_feeder * n_node_per_feeder + 1
+    pgm_dataset = dict()
+    tpf_grid_nodes = pd.DataFrame()
+    tpf_grid_lines = pd.DataFrame()
+
+    # node
+    # pgm
+    pgm_dataset["node"] = pgm.initialize_array("input", "node", n_node)
+    pgm_dataset["node"]["id"] = np.arange(n_node, dtype=np.int32)
+    pgm_dataset["node"]["u_rated"] = u_rated
+    # tpf
+    tpf_grid_nodes["NODES"] = np.arange(1, n_node + 1, dtype=np.int32)
+    tpf_grid_nodes["Tb"] = np.zeros_like(pgm_dataset["node"]["id"])
+    tpf_grid_nodes["Tb"][0] = 1
+    tpf_grid_nodes["PD"] = np.zeros_like(pgm_dataset["node"]["id"])
+    tpf_grid_nodes["QD"] = np.zeros_like(pgm_dataset["node"]["id"])
+    tpf_grid_nodes["Pct"] = np.ones_like(pgm_dataset["node"]["id"])
+    tpf_grid_nodes["Ict"] = np.zeros_like(pgm_dataset["node"]["id"])
+    tpf_grid_nodes["Zct"] = np.zeros_like(pgm_dataset["node"]["id"])
+
+    # line
+    n_line = n_node - 1
+    to_node_feeder = np.arange(1, n_node_per_feeder + 1, dtype=np.int32)
+    to_node_feeder = to_node_feeder.reshape(1, -1) + np.arange(0, n_feeder).reshape(-1, 1) * n_node_per_feeder
+    to_node = to_node_feeder.ravel()
+    from_node_feeder = np.arange(1, n_node_per_feeder, dtype=np.int32)
+    from_node_feeder = from_node_feeder.reshape(1, -1) + np.arange(0, n_feeder).reshape(-1, 1) * n_node_per_feeder
+    from_node_feeder = np.concatenate((np.zeros(shape=(n_feeder, 1), dtype=np.int32), from_node_feeder), axis=1)
+    from_node = from_node_feeder.ravel()
+    length = rng.uniform(low=cable_length_km_min, high=cable_length_km_max, size=n_line)
+    # pgm
+    pgm_dataset["line"] = pgm.initialize_array("input", "line", n_line)
+    pgm_dataset["line"]["id"] = np.arange(n_node, n_node + n_line, dtype=np.int32)
+    pgm_dataset["line"]["from_node"] = from_node
+    pgm_dataset["line"]["to_node"] = to_node
+    pgm_dataset["line"]["from_status"] = 1
+    pgm_dataset["line"]["to_status"] = 1
+    for attr_name, attr in cable_param.items():
+        if attr_name in ["i_n", "tan1", "tan0"]:
+            pgm_dataset["line"][attr_name] = attr
+        else:
+            pgm_dataset["line"][attr_name] = attr * length
+    # tpf
+    tpf_grid_lines["FROM"] = from_node + np.ones_like(from_node)
+    tpf_grid_lines["TO"] = to_node + np.ones_like(to_node)
+    tpf_grid_lines["R"] = pgm_dataset["line"]["r1"]
+    tpf_grid_lines["X"] = pgm_dataset["line"]["x1"]
+    tpf_grid_lines["B"] = np.zeros_like(to_node)
+    tpf_grid_lines["STATUS"] = np.ones_like(to_node)
+    tpf_grid_lines["TAP"] = np.ones_like(to_node)
+
+    # add load
+    n_load = n_node - 1
+    # pgm
+    pgm_dataset["sym_load"] = pgm.initialize_array("input", "sym_load", n_load)
+    pgm_dataset["sym_load"]["id"] = np.arange(n_node + n_line, n_node + n_line + n_load, dtype=np.int32)
+    pgm_dataset["sym_load"]["node"] = pgm_dataset["node"]["id"][1:]
+    pgm_dataset["sym_load"]["status"] = 1
+    pgm_dataset["sym_load"]["type"] = pgm.LoadGenType.const_power
+    pgm_dataset["sym_load"]["p_specified"] = rng.uniform(low=load_p_w_min / 3.0, high=load_p_w_max / 3.0, size=n_load)
+    pgm_dataset["sym_load"]["q_specified"] = pgm_dataset["sym_load"]["p_specified"] * np.sqrt(1 - pf**2) / pf
+    # tpf
+    tpf_grid_nodes["PD"][1:] = pgm_dataset["sym_load"]["p_specified"]
+    tpf_grid_nodes["QD"][1:] = pgm_dataset["sym_load"]["q_specified"]
+
+    # source
+    # pgm
+    source_id = n_node + n_line + n_load
+    pgm_dataset["source"] = pgm.initialize_array("input", "source", 1)
+    pgm_dataset["source"]["id"] = source_id
+    pgm_dataset["source"]["node"] = source_node
+    pgm_dataset["source"]["status"] = 1
+    pgm_dataset["source"]["u_ref"] = source_u_ref
+    pgm_dataset["source"]["sk"] = source_sk
+    pgm_dataset["source"]["rx_ratio"] = source_rx
+    pgm_dataset["source"]["z01_ratio"] = source_01
+    # tpf
+
+    # generate time series
+    rng = np.random.default_rng(seed)
+
+    # pgm
+    n_load = pgm_dataset["sym_load"].size
+    scaling = rng.uniform(low=load_scaling_min, high=load_scaling_max, size=(n_step, n_load))
+    sym_load_profile = pgm.initialize_array("update", "sym_load", (n_step, n_load))
+    sym_load_profile["id"] = pgm_dataset["sym_load"]["id"].reshape(1, -1)
+    sym_load_profile["p_specified"] = pgm_dataset["sym_load"]["p_specified"].reshape(1, -1) * scaling
+    sym_load_profile["q_specified"] = pgm_dataset["sym_load"]["q_specified"].reshape(1, -1) * scaling
+    # tpf - in kW
+    tpf_time_series_p = sym_load_profile["p_specified"] * 0.001
+    tpf_time_series_q = sym_load_profile["q_specified"] * 0.001
+
+    return {
+        "pgm_dataset": pgm_dataset,
+        "pgm_update_dataset": {"sym_load": sym_load_profile},
+        "tpf_grid_nodes": tpf_grid_nodes,
+        "tpf_grid_lines": tpf_grid_lines,
+        "tpf_time_series_p": tpf_time_series_p,
+        "tpf_time_series_q": tpf_time_series_q,
     }
