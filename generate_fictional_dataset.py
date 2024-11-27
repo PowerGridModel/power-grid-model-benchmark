@@ -135,18 +135,8 @@ def generate_fictional_grid(
         for line, line_length in zip(pgm_dataset["line"], length)
     }
 
-    n_load = n_node - 1
-    # add sym load
-    pgm_dataset["sym_load"] = pgm.initialize_array("input", "sym_load", n_load)
-    pgm_dataset["sym_load"]["id"] = np.arange(n_node + n_line, n_node + n_line + n_load, dtype=np.int32)
-    pgm_dataset["sym_load"]["node"] = pgm_dataset["node"]["id"][1:]
-    pgm_dataset["sym_load"]["status"] = 1
-    pgm_dataset["sym_load"]["type"] = pgm.LoadGenType.const_power
-    pgm_dataset["sym_load"]["p_specified"] = np.random.uniform(
-        low=load_p_w_min / 3.0, high=load_p_w_max / 3.0, size=n_load
-    )
-    pgm_dataset["sym_load"]["q_specified"] = pgm_dataset["sym_load"]["p_specified"] * np.sqrt(1 - pf**2) / pf
     # add asym load
+    n_load = n_node - 1
     # pgm
     pgm_dataset["asym_load"] = pgm.initialize_array("input", "asym_load", n_load)
     pgm_dataset["asym_load"]["id"] = np.arange(n_node + n_line, n_node + n_line + n_load, dtype=np.int32)
