@@ -225,10 +225,10 @@ def generate_fictional_grid(
     # pgm
     n_load = pgm_dataset["asym_load"].size
     scaling = np.random.uniform(low=load_scaling_min, high=load_scaling_max, size=(n_step, n_load, 3))
-    asym_load_profile = pgm.initialize_array("update", "asym_load", (n_step, n_load))
-    asym_load_profile["id"] = pgm_dataset["asym_load"]["id"].reshape(1, -1)
-    asym_load_profile["p_specified"] = pgm_dataset["asym_load"]["p_specified"].reshape(1, -1, 3) * scaling
-    asym_load_profile["q_specified"] = pgm_dataset["asym_load"]["q_specified"].reshape(1, -1, 3) * scaling
+    asym_load_profile = {
+        "p_specified": pgm_dataset["asym_load"]["p_specified"].reshape(1, -1, 3) * scaling,
+        "q_specified": pgm_dataset["asym_load"]["q_specified"].reshape(1, -1, 3) * scaling,
+    }
 
     # pp
     pp_dataset = {}
