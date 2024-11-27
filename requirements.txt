@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: MPL-2.0
 
 jupyter
-numba~=0.56.0
+numba
 numpy
 pandapower
-power-grid-model>=1.4
+power-grid-model>=1.10
 lightsim2grid
 igraph
 pandas
