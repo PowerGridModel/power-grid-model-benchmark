@@ -135,18 +135,8 @@ def generate_fictional_grid(
         for line, line_length in zip(pgm_dataset["line"], length)
     }
 
-    n_load = n_node - 1
-    # add sym load
-    pgm_dataset["sym_load"] = pgm.initialize_array("input", "sym_load", n_load)
-    pgm_dataset["sym_load"]["id"] = np.arange(n_node + n_line, n_node + n_line + n_load, dtype=np.int32)
-    pgm_dataset["sym_load"]["node"] = pgm_dataset["node"]["id"][1:]
-    pgm_dataset["sym_load"]["status"] = 1
-    pgm_dataset["sym_load"]["type"] = pgm.LoadGenType.const_power
-    pgm_dataset["sym_load"]["p_specified"] = np.random.uniform(
-        low=load_p_w_min / 3.0, high=load_p_w_max / 3.0, size=n_load
-    )
-    pgm_dataset["sym_load"]["q_specified"] = pgm_dataset["sym_load"]["p_specified"] * np.sqrt(1 - pf**2) / pf
     # add asym load
+    n_load = n_node - 1
     # pgm
     pgm_dataset["asym_load"] = pgm.initialize_array("input", "asym_load", n_load)
     pgm_dataset["asym_load"]["id"] = np.arange(n_node + n_line, n_node + n_line + n_load, dtype=np.int32)
@@ -235,10 +225,10 @@ def generate_fictional_grid(
     # pgm
     n_load = pgm_dataset["asym_load"].size
     scaling = np.random.uniform(low=load_scaling_min, high=load_scaling_max, size=(n_step, n_load, 3))
-    asym_load_profile = pgm.initialize_array("update", "asym_load", (n_step, n_load))
-    asym_load_profile["id"] = pgm_dataset["asym_load"]["id"].reshape(1, -1)
-    asym_load_profile["p_specified"] = pgm_dataset["asym_load"]["p_specified"].reshape(1, -1, 3) * scaling
-    asym_load_profile["q_specified"] = pgm_dataset["asym_load"]["q_specified"].reshape(1, -1, 3) * scaling
+    asym_load_profile = {
+        "p_specified": pgm_dataset["asym_load"]["p_specified"].reshape(1, -1, 3) * scaling,
+        "q_specified": pgm_dataset["asym_load"]["q_specified"].reshape(1, -1, 3) * scaling,
+    }
 
     # pp
     pp_dataset = {}
