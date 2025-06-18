@@ -7,7 +7,10 @@ from packaging.version import Version
 import numpy as np
 import pandas as pd
 import pandapower as pp
+from pandapower.file_io import to_json as pp_to_json
+
 import power_grid_model as pgm
+from power_grid_model.utils import json_serialize_to_file
 from pandapower.timeseries.data_sources.frame_data import DFData
 from jinja2 import Environment, FileSystemLoader
 from pathlib import Path
@@ -78,6 +81,7 @@ cable_param_pp = {
 
 class LightSim2GridNetInput:
     """A class to represent a grid network for LightSim2Grid."""
+
     def __init__(
         self,
         Ybus: np.ndarray,
@@ -113,8 +117,8 @@ class LightSim2GridNetInput:
 
         on = np.flatnonzero(gen[:, GEN_STATUS] > 0)  ## which generators are on?
         gbus = gen[on, GEN_BUS].astype(np.int64)  ## what buses are they at?
-        V0 = bus[:, VM] * np.exp(1j * np.pi / 180. * bus[:, VA])
-        V0[gbus] = gen[on, VG] / abs(V0[gbus]) * V0[gbus]
+        v0 = bus[:, VM] * np.exp(1j * np.pi / 180.0 * bus[:, VA])
+        v0[gbus] = gen[on, VG] / abs(v0[gbus]) * v0[gbus]
 
         Ybus, _, _ = makeYbus(baseMVA, bus, branch)
         Sbus = makeSbus(baseMVA, bus, gen)
@@ -122,7 +126,7 @@ class LightSim2GridNetInput:
         return LightSim2GridNetInput(
             Ybus=Ybus.tocsc(),
             Sbus=Sbus,
-            V0=V0,
+            V0=v0,
             ref=ref,
             pv=pv,
             pq=pq,
@@ -151,6 +155,7 @@ def generate_fictional_grid(
 
     n_node = n_feeder * n_node_per_feeder + 1
     pp_net = pp.create_empty_network(f_hz=frequency)
+    pp_net_sym = pp.create_empty_network(f_hz=frequency)
     pgm_dataset = dict()
 
     # node
@@ -161,6 +166,12 @@ def generate_fictional_grid(
     # pp
     pp.create_buses(
         pp_net,
+        nr_buses=n_node,
+        vn_kv=pgm_dataset["node"]["u_rated"] * 1e-3,
+        index=pgm_dataset["node"]["id"],
+    )
+    pp.create_buses(
+        pp_net_sym,
         nr_buses=n_node,
         vn_kv=pgm_dataset["node"]["u_rated"] * 1e-3,
         index=pgm_dataset["node"]["id"],
@@ -202,6 +213,15 @@ def generate_fictional_grid(
     pp.create_std_type(pp_net, cable_param_pp, name="630Al", element="line")
     pp.create_lines_from_parameters(
         pp_net,
+        from_buses=from_node,
+        to_buses=to_node,
+        length_km=length,
+        index=pgm_dataset["line"]["id"] - n_node,
+        **cable_param_pp,
+    )
+    pp.create_std_type(pp_net_sym, cable_param_pp, name="630Al", element="line")
+    pp.create_lines_from_parameters(
+        pp_net_sym,
         from_buses=from_node,
         to_buses=to_node,
         length_km=length,
@@ -255,7 +275,26 @@ def generate_fictional_grid(
         },
         index=pgm_dataset["asym_load"]["id"] - n_line - n_node,
     )
+    sym_load_df = pd.DataFrame(
+        {
+            "name": [None] * n_load,
+            "bus": pgm_dataset["asym_load"]["node"],
+            "p_mw": np.sum(pgm_dataset["asym_load"]["p_specified"][:, :], axis=1)
+            * 1e-6,
+            "q_mvar": np.sum(pgm_dataset["asym_load"]["q_specified"][:, :], axis=1)
+            * 1e-6,
+            "const_z_percent": np.zeros(shape=(n_load), dtype=np.float64),
+            "const_i_percent": np.zeros(shape=(n_load), dtype=np.float64),
+            "sn_mva": np.full(shape=(n_load,), fill_value=np.nan, dtype=np.float64),
+            "scaling": np.full(shape=(n_load,), fill_value=1.0, dtype=np.float64),
+            "in_service": np.full(shape=(n_load,), fill_value=True, dtype=np.bool_),
+            "type": np.full(shape=(n_load,), fill_value="wye", dtype=np.object_),
+        },
+        index=pgm_dataset["asym_load"]["id"] - n_line - n_node,
+    )
     pp_net.asymmetric_load = asym_load_df
+    pp_net_sym.load = sym_load_df
+
     # dss
     dss_dict["Load"] = {
         f"{load['id']}_{phase + 1}": {
@@ -297,6 +336,17 @@ def generate_fictional_grid(
         r0x0_max=source_rx,
         x0x_max=source_01,
     )
+    pp.create_ext_grid(
+        pp_net_sym,
+        bus=0,
+        vm_pu=source_u_ref,
+        va_degree=0.0,
+        index=0,
+        s_sc_max_mva=source_sk * 1e-6,
+        rx_max=source_rx,
+        r0x0_max=source_rx,
+        x0x_max=source_01,
+    )
     # dss
     dss_dict["source_name"] = source_id
     dss_dict["source_dict"] = {
@@ -326,6 +376,7 @@ def generate_fictional_grid(
 
     # pp
     pp_dataset = {}
+    pp_dataset_sym = {}
     for x, y in zip(["p", "q"], ["mw", "mvar"]):
         for i, p in enumerate(["a", "b", "c"]):
             name = f"{x}_{p}_{y}"
@@ -336,6 +387,14 @@ def generate_fictional_grid(
                     columns=pp_net.asymmetric_load.index,
                 )
             )
+        name = f"{x}_{y}"
+        pp_dataset_sym[name] = DFData(
+            pd.DataFrame(
+                np.sum(asym_load_profile[f"{x}_specified"], axis=-1) * 1e-6,
+                index=np.arange(n_step),
+                columns=pp_net_sym.load.index,
+            )
+        )
 
     # dss
     dss_dict["LoadShape"] = {
@@ -365,6 +424,73 @@ def generate_fictional_grid(
                 "Mode": opendss_monitor_mode,
             }
 
+    # generate pgm
+    PGM_DATA_PATH = DATA_DIR / "pgm_grid"
+    PGM_DATA_PATH.mkdir(exist_ok=True)
+    json_serialize_to_file(
+        PGM_DATA_PATH / "input_data.json", pgm_dataset, pgm.DatasetType.input
+    )
+    json_serialize_to_file(
+        PGM_DATA_PATH / "update_data.json",
+        {"asym_load": asym_load_profile},
+        pgm.DatasetType.update,
+    )
+
+    # generate grid2op
+    for g2o_scenario, generate_pv_nodes in [
+        ("g2o_grid_sym", False),
+        ("g2o_grid_sym_pv", True),
+    ]:
+        GRID2OP_PATH = DATA_DIR / g2o_scenario
+        GRID2OP_PATH.mkdir(exist_ok=True)
+        GRID2OP_CHRONICS_PATH = GRID2OP_PATH / "chronics" / "000"
+        GRID2OP_CHRONICS_PATH.mkdir(exist_ok=True)
+
+        pp_to_json(pp_net_sym, GRID2OP_PATH / "grid.json")
+        with (GRID2OP_PATH / "config.py").open(mode="w", encoding="utf-8") as f:
+            f.write(r"""from grid2op.Backend import PandaPowerBackend
+from grid2op.Chronics import Multifolder
+
+config = {
+    "backend": PandaPowerBackend,
+    "chronics_class": Multifolder,
+}
+""")
+
+        source_names = [
+            f"gen_{g2o_node_id}_{g2o_source_id}"
+            for g2o_source_id, g2o_node_id in enumerate(pgm_dataset["node"]["id"][:1])
+        ]
+        load_names = [
+            f"load_{g2o_node_id}_{g2o_load_id}"
+            for g2o_load_id, g2o_node_id in enumerate(pgm_dataset["node"]["id"][1:])
+        ]
+        pd.DataFrame(asym_load_profile["p_specified"].sum(axis=-1) / 1e6).to_csv(
+            GRID2OP_CHRONICS_PATH / "load_p.csv",
+            index=False,
+            header=load_names,
+            sep=";",
+        )
+        pd.DataFrame(asym_load_profile["q_specified"].sum(axis=-1) / 1e6).to_csv(
+            GRID2OP_CHRONICS_PATH / "load_q.csv",
+            index=False,
+            header=load_names,
+            sep=";",
+        )
+        if generate_pv_nodes:
+            pd.DataFrame(np.ones((n_step, 1), dtype=np.float64) * 10.5).to_csv(
+                GRID2OP_CHRONICS_PATH / "prod_v.csv",
+                index=False,
+                header=source_names,
+                sep=";",
+            )
+            pd.DataFrame(np.zeros((n_step, 1), dtype=np.float64)).to_csv(
+                GRID2OP_CHRONICS_PATH / "prod_p.csv",
+                index=False,
+                header=source_names,
+                sep=";",
+            )
+
     # generate dss
     # jinja expects a string, representing a relative path with forward slashes
     template_path_str = str(TEMPLATE_PATH.relative_to(FILE_DIR)).replace("\\", "/")
@@ -381,8 +507,14 @@ def generate_fictional_grid(
         "pp_net": pp_net,
         "pgm_update_dataset": {"asym_load": asym_load_profile},
         "pp_time_series_dataset": pp_dataset,
+        "pp_time_series_dataset_sym": pp_dataset_sym,
         "dss_file": output_path,
-        "lightsim2grid_input": LightSim2GridNetInput.from_pandapower_net(pp_net),
+        "l2g_input": LightSim2GridNetInput.from_pandapower_net(pp_net),
+        "g2o_input": GRID2OP_PATH / "grid.json",
+        "g2o_update": {
+            "load_p": GRID2OP_PATH / "load_p.csv",
+            "load_q": GRID2OP_PATH / "load_q.csv",
+        },
     }
 
 
@@ -422,7 +554,7 @@ def generate_fictional_grid_pgm_tpf(
     tpf_grid_nodes["Zct"] = np.zeros_like(pgm_dataset["node"]["id"])
 
     # line
-    n_line = n_node - 1
+    n_line = n_node
     to_node_feeder = np.arange(1, n_node_per_feeder + 1, dtype=np.int32)
     to_node_feeder = (
         to_node_feeder.reshape(1, -1)
