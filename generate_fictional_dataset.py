@@ -100,6 +100,22 @@ class LightSim2GridNetInput:
         self.pq = pq
         self.ppci = ppci
 
+    def copy(self) -> "LightSim2GridNetInput":
+        """Create a copy of the LightSim2GridNetInput instance."""
+        return LightSim2GridNetInput(
+            Ybus=self.Ybus.copy(),
+            Sbus=self.Sbus.copy(),
+            V0=self.V0.copy(),
+            ref=self.ref.copy(),
+            pv=self.pv.copy(),
+            pq=self.pq.copy(),
+            ppci=self.ppci.copy(),
+        )
+
+    @staticmethod
+    def copy_from(other: "LightSim2GridNetInput") -> "LightSim2GridNetInput":
+        return other.copy()
+
     @staticmethod
     def from_pandapower_net(pp_net: pp.pandapowerNet) -> "LightSim2GridNetInput":
         ppci = to_ppc(pp_net, init="flat")
