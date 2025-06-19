@@ -460,7 +460,7 @@ def generate_fictional_grid(
         GRID2OP_PATH = DATA_DIR / g2o_scenario
         GRID2OP_PATH.mkdir(exist_ok=True)
         GRID2OP_CHRONICS_PATH = GRID2OP_PATH / "chronics" / "000"
-        GRID2OP_CHRONICS_PATH.mkdir(exist_ok=True)
+        GRID2OP_CHRONICS_PATH.mkdir(exist_ok=True, parents=True)
 
         pp_to_json(pp_net_sym, GRID2OP_PATH / "grid.json")
         with (GRID2OP_PATH / "config.py").open(mode="w", encoding="utf-8") as f:
