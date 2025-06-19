@@ -570,7 +570,7 @@ def generate_fictional_grid_pgm_tpf(
     tpf_grid_nodes["Zct"] = np.zeros_like(pgm_dataset["node"]["id"])
 
     # line
-    n_line = n_node
+    n_line = n_node - 1
     to_node_feeder = np.arange(1, n_node_per_feeder + 1, dtype=np.int32)
     to_node_feeder = (
         to_node_feeder.reshape(1, -1)
