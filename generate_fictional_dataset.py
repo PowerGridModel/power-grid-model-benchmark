@@ -151,6 +151,7 @@ class LightSim2GridNetInput:
 
 
 def generate_fictional_grid(
+    *,
     n_feeder: int,
     n_node_per_feeder: int,
     cable_length_km_min: float,
@@ -162,6 +163,7 @@ def generate_fictional_grid(
     load_scaling_min: float,
     load_scaling_max: float,
     seed=0,
+    **kwargs,
 ):
     dss_dict = {"frequency": frequency, "basekv": u_rated * 1e-3}
 
