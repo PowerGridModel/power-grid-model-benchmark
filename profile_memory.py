@@ -3,7 +3,10 @@ import time
 import psutil
 import warnings
 
+from memory_profiler import profile
+
 from power_grid_model import PowerGridModel
+from power_grid_model.data_types import SingleDataset, BatchDataset
 
 from generate_fictional_dataset import generate_fictional_grid
 
@@ -15,8 +18,9 @@ START_TIME = time.time()
 
 
 def print_time():
-    elapsed_time = time.time() - START_TIME
-    return f"{elapsed_time:.2f} seconds elapsed since start of benchmark"
+    current_time = time.time()
+    elapsed_time = current_time - START_TIME
+    return f"timestamp = {current_time} ({elapsed_time:.2f} seconds elapsed since start of benchmark)"
 
 
 # Fictional grid parameters
@@ -81,45 +85,58 @@ def input_fictional_grid(params: FictionalGridParams):
     return input_data
 
 
-def create_model(params: FictionalGridParams):
+def create_model(*, input_data: SingleDataset):
     print(f"Create model: {print_time()}")
-    input_data = input_fictional_grid(params)
+    print(f"\tPowerGridModel: {print_time()}")
     model = PowerGridModel(input_data=input_data)
+    print(f"\tdel model: {print_time()}")
     del model
+    print(f"\tdel input_data: {print_time()}")
     del input_data
+    print(f"\tDone: {print_time()}")
 
 
-def single_calculation(params: FictionalGridParams, *, symmetric: bool = True):
+def single_calculation(*, input_data: SingleDataset, symmetric: bool = True):
     print(f"Single calculation (symmetric={symmetric}): {print_time()}")
-    input_data = input_fictional_grid(params)
+    print(f"\tPowerGridModel: {print_time()}")
     model = PowerGridModel(input_data=input_data)
+    print(f"\tmodel.calculate_power_flow: {print_time()}")
     model.calculate_power_flow(symmetric=symmetric)
+    print(f"\tdel model: {print_time()}")
     del model
+    print(f"\tdel input_data: {print_time()}")
     del input_data
+    print(f"\tDone: {print_time()}")
 
 
-def batch_calculation(params: FictionalGridParams, symmetric: bool = True):
+def batch_calculation(*, input_data: SingleDataset, update_data: BatchDataset, symmetric: bool = True):
     print(f"Batch calculation (symmetric={symmetric}): {print_time()}")
-    input_data, update_data = fictional_grid(params)
+    print(f"\tPowerGridModel: {print_time()}")
     model = PowerGridModel(input_data=input_data)
+    print(f"\tmodel.calculate_power_flow: {print_time()}")
     model.calculate_power_flow(update_data=update_data, symmetric=symmetric)
+    print(f"\tdel model: {print_time()}")
     del model
+    print(f"\tdel input_data: {print_time()}")
     del input_data
+    print(f"\tdel update_data: {print_time()}")
     del update_data
+    print(f"\tDone: {print_time()}")
 
 
 def main(params: FictionalGridParams):
-    create_model(params)
-    single_calculation(params, symmetric=True)
-    single_calculation(params, symmetric=False)
-    batch_calculation(params, symmetric=True)
-    batch_calculation(params, symmetric=False)
+    input_data, update_data = fictional_grid(params)
+    create_model(input_data=input_data)
+    single_calculation(input_data=input_data, symmetric=True)
+    single_calculation(input_data=input_data, symmetric=False)
+    batch_calculation(input_data=input_data, update_data=update_data, symmetric=True)
+    batch_calculation(input_data=input_data, update_data=update_data, symmetric=False)
 
 
 if __name__ == "__main__":
     try:
-        print(f"Running small fictional grid benchmark: {print_time()}")
-        main(SmallFictionalGridParams())
+        # print(f"Running small fictional grid benchmark: {print_time()}")
+        # main(SmallFictionalGridParams())
         print(f"Running large fictional grid benchmark: {print_time()}")
         main(FictionalGridParams())
     except psutil.NoSuchProcess:
