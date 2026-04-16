@@ -43,6 +43,15 @@ source_node = 0
 # opendss monitor
 opendss_monitor_mode = 32  # 0 for voltage, +32 for magnitude only
 
+LOAD_VOLTAGE_DEPENDENT_COLUMN_DEFAULTS = {
+    "const_z_percent": 0.0,
+    "const_i_percent": 0.0,
+    "const_z_p_percent": 0.0,
+    "const_i_p_percent": 0.0,
+    "const_z_q_percent": 0.0,
+    "const_i_q_percent": 0.0,
+}
+
 # cable parameter per km
 # 630Al XLPE 10 kV with neutral conductor
 cable_type = "630Al"
@@ -164,6 +173,18 @@ class LightSim2GridNetInput:
             pq=pq,
             ppci=ppci,
         )
+
+
+def _ensure_load_voltage_dependent_columns(load_df: pd.DataFrame) -> pd.DataFrame:
+    """Add missing pandapower voltage-dependent load columns with defaults."""
+    for column_name, default_value in LOAD_VOLTAGE_DEPENDENT_COLUMN_DEFAULTS.items():
+        if column_name not in load_df.columns:
+            load_df[column_name] = np.full(
+                shape=(load_df.shape[0],),
+                fill_value=default_value,
+                dtype=np.float64,
+            )
+    return load_df
 
 
 def generate_fictional_grid(
@@ -324,8 +345,8 @@ def generate_fictional_grid(
         },
         index=pgm_dataset["asym_load"]["id"] - n_line - n_node,
     )
-    pp_net.asymmetric_load = asym_load_df
-    pp_net_sym.load = sym_load_df
+    pp_net.asymmetric_load = _ensure_load_voltage_dependent_columns(asym_load_df)
+    pp_net_sym.load = _ensure_load_voltage_dependent_columns(sym_load_df)
 
     # dss
     dss_dict["Load"] = {
