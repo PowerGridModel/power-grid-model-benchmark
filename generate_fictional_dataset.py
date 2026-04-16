@@ -175,7 +175,7 @@ class LightSim2GridNetInput:
         )
 
 
-def _ensure_load_voltage_dependent_columns(load_df: pd.DataFrame) -> pd.DataFrame:
+def _make_load_voltage_dependent_columns(load_df: pd.DataFrame) -> pd.DataFrame:
     """Add missing pandapower voltage-dependent load columns with defaults."""
     for column_name, default_value in LOAD_VOLTAGE_DEPENDENT_COLUMN_DEFAULTS.items():
         if column_name not in load_df.columns:
@@ -345,8 +345,8 @@ def generate_fictional_grid(
         },
         index=pgm_dataset["asym_load"]["id"] - n_line - n_node,
     )
-    pp_net.asymmetric_load = _ensure_load_voltage_dependent_columns(asym_load_df)
-    pp_net_sym.load = _ensure_load_voltage_dependent_columns(sym_load_df)
+    pp_net.asymmetric_load = _make_load_voltage_dependent_columns(asym_load_df)
+    pp_net_sym.load = _make_load_voltage_dependent_columns(sym_load_df)
 
     # dss
     dss_dict["Load"] = {
