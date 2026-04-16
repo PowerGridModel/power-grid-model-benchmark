@@ -499,6 +499,9 @@ def generate_fictional_grid(
         GRID2OP_CHRONICS_PATH = GRID2OP_PATH / "chronics" / "000"
         GRID2OP_CHRONICS_PATH.mkdir(exist_ok=True, parents=True)
 
+        pp_net_sym.line.loc[:, "name"] = [f"line_{line_index}" for line_index in pp_net_sym.line.index]
+        assert pp_net_sym.line["name"].is_unique
+
         pp_to_json(pp_net_sym, GRID2OP_PATH / "grid.json")
         with (GRID2OP_PATH / "config.py").open(mode="w", encoding="utf-8") as f:
             f.write(r"""from grid2op.Backend import PandaPowerBackend
@@ -509,7 +512,6 @@ config = {
     "chronics_class": Multifolder,
 }
 """)
-
         source_names = [
             f"gen_{g2o_node_id}_{g2o_source_id}"
             for g2o_source_id, g2o_node_id in enumerate(pgm_dataset["node"]["id"][:1])
