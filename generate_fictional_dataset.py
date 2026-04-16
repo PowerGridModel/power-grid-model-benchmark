@@ -19,6 +19,7 @@ from pandapower.converter.pypower.to_ppc import to_ppc
 from pandapower.pf.makeYbus_numba import makeYbus
 from pandapower.pypower.idx_bus import VM, VA
 from pandapower.pypower.idx_gen import GEN_BUS, GEN_STATUS, VG
+from pandapower.pypower import idx_brch as pp_idx_brch
 from pandapower.pypower.bustypes import bustypes
 from pandapower.pypower.makeSbus import makeSbus
 
@@ -124,6 +125,21 @@ class LightSim2GridNetInput:
         bus = ppci["bus"]
         gen = ppci["gen"]
         branch = ppci["branch"]
+
+        required_branch_column_count = (
+            max(
+                value
+                for name, value in vars(pp_idx_brch).items()
+                if name.startswith("BR_") and isinstance(value, int)
+            )
+            + 1
+        )
+        if branch.shape[1] < required_branch_column_count:
+            padded_branch = np.zeros(
+                (branch.shape[0], required_branch_column_count), dtype=branch.dtype
+            )
+            padded_branch[:, : branch.shape[1]] = branch
+            branch = padded_branch
 
         if Version(pp.__version__) < Version("3"):
             ref, pv, pq = bustypes(bus, gen)
