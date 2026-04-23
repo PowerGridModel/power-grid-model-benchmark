@@ -19,6 +19,7 @@ from pandapower.converter.pypower.to_ppc import to_ppc
 from pandapower.pf.makeYbus_numba import makeYbus
 from pandapower.pypower.idx_bus import VM, VA
 from pandapower.pypower.idx_gen import GEN_BUS, GEN_STATUS, VG
+from pandapower.pypower import idx_brch as pp_idx_brch
 from pandapower.pypower.bustypes import bustypes
 from pandapower.pypower.makeSbus import makeSbus
 
@@ -41,6 +42,15 @@ source_node = 0
 
 # opendss monitor
 opendss_monitor_mode = 32  # 0 for voltage, +32 for magnitude only
+
+LOAD_VOLTAGE_DEPENDENT_COLUMN_DEFAULTS = {
+    "const_z_percent": 0.0,
+    "const_i_percent": 0.0,
+    "const_z_p_percent": 0.0,
+    "const_i_p_percent": 0.0,
+    "const_z_q_percent": 0.0,
+    "const_i_q_percent": 0.0,
+}
 
 # cable parameter per km
 # 630Al XLPE 10 kV with neutral conductor
@@ -125,6 +135,21 @@ class LightSim2GridNetInput:
         gen = ppci["gen"]
         branch = ppci["branch"]
 
+        required_branch_column_count = (
+            max(
+                value
+                for name, value in vars(pp_idx_brch).items()
+                if name.startswith("BR_") and isinstance(value, int)
+            )
+            + 1
+        )
+        if branch.shape[1] < required_branch_column_count:
+            padded_branch = np.zeros(
+                (branch.shape[0], required_branch_column_count), dtype=branch.dtype
+            )
+            padded_branch[:, : branch.shape[1]] = branch
+            branch = padded_branch
+
         if Version(pp.__version__) < Version("3"):
             ref, pv, pq = bustypes(bus, gen)
         else:
@@ -148,6 +173,18 @@ class LightSim2GridNetInput:
             pq=pq,
             ppci=ppci,
         )
+
+
+def _make_load_voltage_dependent_columns(load_df: pd.DataFrame) -> pd.DataFrame:
+    """Add missing pandapower voltage-dependent load columns with defaults."""
+    for column_name, default_value in LOAD_VOLTAGE_DEPENDENT_COLUMN_DEFAULTS.items():
+        if column_name not in load_df.columns:
+            load_df[column_name] = np.full(
+                shape=(load_df.shape[0],),
+                fill_value=default_value,
+                dtype=np.float64,
+            )
+    return load_df
 
 
 def generate_fictional_grid(
@@ -308,8 +345,8 @@ def generate_fictional_grid(
         },
         index=pgm_dataset["asym_load"]["id"] - n_line - n_node,
     )
-    pp_net.asymmetric_load = asym_load_df
-    pp_net_sym.load = sym_load_df
+    pp_net.asymmetric_load = _make_load_voltage_dependent_columns(asym_load_df)
+    pp_net_sym.load = _make_load_voltage_dependent_columns(sym_load_df)
 
     # dss
     dss_dict["Load"] = {
@@ -462,6 +499,9 @@ def generate_fictional_grid(
         GRID2OP_CHRONICS_PATH = GRID2OP_PATH / "chronics" / "000"
         GRID2OP_CHRONICS_PATH.mkdir(exist_ok=True, parents=True)
 
+        pp_net_sym.line.loc[:, "name"] = [f"line_{line_index}" for line_index in pp_net_sym.line.index]
+        assert pp_net_sym.line["name"].is_unique
+
         pp_to_json(pp_net_sym, GRID2OP_PATH / "grid.json")
         with (GRID2OP_PATH / "config.py").open(mode="w", encoding="utf-8") as f:
             f.write(r"""from grid2op.Backend import PandaPowerBackend
@@ -472,7 +512,6 @@ config = {
     "chronics_class": Multifolder,
 }
 """)
-
         source_names = [
             f"gen_{g2o_node_id}_{g2o_source_id}"
             for g2o_source_id, g2o_node_id in enumerate(pgm_dataset["node"]["id"][:1])
